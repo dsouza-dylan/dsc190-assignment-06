@@ -1,0 +1,24 @@
+[project]
+name = "dsc190-assignment-06"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "python-dateutil>=2.9.0.post0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.14.1",
+    "pytest>=8.3.5",
+    "ruff>=0.15.12",
+    "types-python-dateutil>=2.9.0.20241206",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.mypy]
+ignore_missing_imports = true
+python_version = "3.12"
