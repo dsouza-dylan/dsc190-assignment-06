@@ -15,6 +15,20 @@ WEEKDAYS = {
 }
 
 
+WORD_NUMS = {
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+}
+
+
 def apply_offset(base: date, amount: int, unit: str) -> date:
     if unit.startswith("day"):
         return base + timedelta(days=amount)
@@ -53,6 +67,9 @@ def parse_amount(value: str) -> int:
     if value in {"a", "an"}:
         return 1
 
+    if value in WORD_NUMS:
+        return WORD_NUMS[value]
+
     return int(value)
 
 
@@ -74,7 +91,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return today - timedelta(days=1)
 
     match = re.fullmatch(
-        r"in (\d+|a|an) (days?|weeks?|months?|years?)",
+        r"in (\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten) (days?|weeks?|months?|years?)",
         s,
     )
 
@@ -85,7 +102,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return apply_offset(today, amount, unit)
 
     match = re.fullmatch(
-        r"(\d+|a|an) (days?|weeks?|months?|years?) ago",
+        r"(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten) (days?|weeks?|months?|years?) ago",
         s,
     )
 
@@ -96,7 +113,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return apply_offset(today, -amount, unit)
 
     match = re.fullmatch(
-        r"(\d+|a|an) (days?|weeks?|months?|years?) before (.+)",
+        r"(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten) (days?|weeks?|months?|years?) before (.+)",
         s,
     )
 
@@ -108,7 +125,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return apply_offset(target, -amount, unit)
 
     match = re.fullmatch(
-        r"(\d+|a|an) (days?|weeks?|months?|years?) after (.+)",
+        r"(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten) (days?|weeks?|months?|years?) after (.+)",
         s,
     )
 
