@@ -49,6 +49,13 @@ def last_weekday(base: date, target: int) -> date:
     return base - timedelta(days=days_behind)
 
 
+def parse_amount(value: str) -> int:
+    if value in {"a", "an"}:
+        return 1
+
+    return int(value)
+
+
 def parse(s: str, today: Optional[date] = None) -> date:
     if today is None:
         today = date.today()
@@ -67,46 +74,46 @@ def parse(s: str, today: Optional[date] = None) -> date:
         return today - timedelta(days=1)
 
     match = re.fullmatch(
-        r"in (\d+) (days?|weeks?|months?|years?)",
+        r"in (\d+|a|an) (days?|weeks?|months?|years?)",
         s,
     )
 
     if match:
-        amount = int(match.group(1))
+        amount = parse_amount(match.group(1))
         unit = match.group(2)
 
         return apply_offset(today, amount, unit)
 
     match = re.fullmatch(
-        r"(\d+) (days?|weeks?|months?|years?) ago",
+        r"(\d+|a|an) (days?|weeks?|months?|years?) ago",
         s,
     )
 
     if match:
-        amount = int(match.group(1))
+        amount = parse_amount(match.group(1))
         unit = match.group(2)
 
         return apply_offset(today, -amount, unit)
 
     match = re.fullmatch(
-        r"(\d+) (days?|weeks?|months?|years?) before (.+)",
+        r"(\d+|a|an) (days?|weeks?|months?|years?) before (.+)",
         s,
     )
 
     if match:
-        amount = int(match.group(1))
+        amount = parse_amount(match.group(1))
         unit = match.group(2)
         target = parse(match.group(3), today)
 
         return apply_offset(target, -amount, unit)
 
     match = re.fullmatch(
-        r"(\d+) (days?|weeks?|months?|years?) after (.+)",
+        r"(\d+|a|an) (days?|weeks?|months?|years?) after (.+)",
         s,
     )
 
     if match:
-        amount = int(match.group(1))
+        amount = parse_amount(match.group(1))
         unit = match.group(2)
         target = parse(match.group(3), today)
 
