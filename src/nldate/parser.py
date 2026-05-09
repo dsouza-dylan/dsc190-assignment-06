@@ -26,7 +26,28 @@ WORD_NUMS = {
     "eight": 8,
     "nine": 9,
     "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "thirteen": 13,
+    "fourteen": 14,
+    "fifteen": 15,
+    "sixteen": 16,
+    "seventeen": 17,
+    "eighteen": 18,
+    "nineteen": 19,
+    "twenty": 20,
+    "thirty": 30,
+    "forty": 40,
+    "fifty": 50,
+    "sixty": 60,
+    "ninety": 90,
+    "hundred": 100,
 }
+
+
+_WORD_NUM_PAT = "|".join(sorted(WORD_NUMS.keys(), key=len, reverse=True))
+_AMOUNT_PAT = rf"(\d+|a|an|{_WORD_NUM_PAT})"
+_UNIT_PAT = r"(days?|weeks?|months?|years?)"
 
 
 def apply_offset(base: date, amount: int, unit: str) -> date:
@@ -81,7 +102,7 @@ def parse(s: str, today: Optional[date] = None) -> date:
 
     s = re.sub(r"(\d+)(st|nd|rd|th)", r"\1", s)
 
-    if s == "today":
+    if s in ("today", "now"):
         return today
 
     if s == "tomorrow":
@@ -90,67 +111,97 @@ def parse(s: str, today: Optional[date] = None) -> date:
     if s == "yesterday":
         return today - timedelta(days=1)
 
-    match = re.fullmatch(
-        r"in (\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten) (days?|weeks?|months?|years?)",
-        s,
-    )
+    if s == "the day after tomorrow":
+        return today + timedelta(days=2)
 
+    if s == "the day before yesterday":
+        return today - timedelta(days=2)
+
+    # "in X units"
+    match = re.fullmatch(rf"in {_AMOUNT_PAT} {_UNIT_PAT}", s)
+    if match:
+        return apply_offset(today, parse_amount(match.group(1)), match.group(2))
+
+    # "X units ago"
+    match = re.fullmatch(rf"{_AMOUNT_PAT} {_UNIT_PAT} ago", s)
+    if match:
+        return apply_offset(today, -parse_amount(match.group(1)), match.group(2))
+
+    # "X units from now/today/tomorrow/yesterday/<date>"
+    match = re.fullmatch(rf"{_AMOUNT_PAT} {_UNIT_PAT} from (.+)", s)
     if match:
         amount = parse_amount(match.group(1))
         unit = match.group(2)
+        anchor_str = match.group(3)
+        anchor = parse(anchor_str, today)
+        return apply_offset(anchor, amount, unit)
 
-        return apply_offset(today, amount, unit)
-
-    match = re.fullmatch(
-        r"(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten) (days?|weeks?|months?|years?) ago",
-        s,
-    )
-
-    if match:
-        amount = parse_amount(match.group(1))
-        unit = match.group(2)
-
-        return apply_offset(today, -amount, unit)
-
-    match = re.fullmatch(
-        r"(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten) (days?|weeks?|months?|years?) before (.+)",
-        s,
-    )
-
+    # "X units before <date>"
+    match = re.fullmatch(rf"{_AMOUNT_PAT} {_UNIT_PAT} before (.+)", s)
     if match:
         amount = parse_amount(match.group(1))
         unit = match.group(2)
         target = parse(match.group(3), today)
-
         return apply_offset(target, -amount, unit)
 
-    match = re.fullmatch(
-        r"(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten) (days?|weeks?|months?|years?) after (.+)",
-        s,
-    )
-
+    # "X units after <date>"
+    match = re.fullmatch(rf"{_AMOUNT_PAT} {_UNIT_PAT} after (.+)", s)
     if match:
         amount = parse_amount(match.group(1))
         unit = match.group(2)
         target = parse(match.group(3), today)
-
         return apply_offset(target, amount, unit)
 
+    # compound: "X units and Y units before/after/from <date>"
+    _compound_anchor = r"(?:before|after|from) (.+)"
+    match = re.fullmatch(
+        rf"{_AMOUNT_PAT} {_UNIT_PAT} and {_AMOUNT_PAT} {_UNIT_PAT} {_compound_anchor}",
+        s,
+    )
+    if match:
+        amount1 = parse_amount(match.group(1))
+        unit1 = match.group(2)
+        amount2 = parse_amount(match.group(3))
+        unit2 = match.group(4)
+        direction_word = s.split(" and ")[1].split(" ")
+        prep = [w for w in direction_word if w in ("before", "after", "from")][-1]
+        sign = -1 if prep == "before" else 1
+        target = parse(match.group(5), today)
+        return apply_offset(apply_offset(target, sign * amount1, unit1), sign * amount2, unit2)
+
+    # "next <weekday>" or "next week/month/year"
     match = re.fullmatch(r"next (\w+)", s)
-
     if match:
-        weekday = match.group(1)
+        word = match.group(1)
+        if word in WEEKDAYS:
+            return next_weekday(today, WEEKDAYS[word])
+        if word == "week":
+            return today + timedelta(weeks=1)
+        if word == "month":
+            return today + relativedelta(months=1)
+        if word == "year":
+            return today + relativedelta(years=1)
 
-        if weekday in WEEKDAYS:
-            return next_weekday(today, WEEKDAYS[weekday])
-
+    # "last <weekday>" or "last week/month/year"
     match = re.fullmatch(r"last (\w+)", s)
-
     if match:
-        weekday = match.group(1)
+        word = match.group(1)
+        if word in WEEKDAYS:
+            return last_weekday(today, WEEKDAYS[word])
+        if word == "week":
+            return today - timedelta(weeks=1)
+        if word == "month":
+            return today - relativedelta(months=1)
+        if word == "year":
+            return today - relativedelta(years=1)
 
-        if weekday in WEEKDAYS:
-            return last_weekday(today, WEEKDAYS[weekday])
+    # "this <weekday>"
+    match = re.fullmatch(r"this (\w+)", s)
+    if match:
+        word = match.group(1)
+        if word in WEEKDAYS:
+            days_ahead = (WEEKDAYS[word] - today.weekday()) % 7
+            return today + timedelta(days=days_ahead)
 
     try:
         return dtparse(s).date()
