@@ -152,22 +152,24 @@ def parse(s: str, today: Optional[date] = None) -> date:
         target = parse(match.group(3), today)
         return apply_offset(target, amount, unit)
 
-    # compound: "X units and Y units before/after/from <date>"
-    _compound_anchor = r"(?:before|after|from) (.+)"
-    match = re.fullmatch(
-        rf"{_AMOUNT_PAT} {_UNIT_PAT} and {_AMOUNT_PAT} {_UNIT_PAT} {_compound_anchor}",
-        s,
-    )
-    if match:
-        amount1 = parse_amount(match.group(1))
-        unit1 = match.group(2)
-        amount2 = parse_amount(match.group(3))
-        unit2 = match.group(4)
-        direction_word = s.split(" and ")[1].split(" ")
-        prep = [w for w in direction_word if w in ("before", "after", "from")][-1]
-        sign = -1 if prep == "before" else 1
-        target = parse(match.group(5), today)
-        return apply_offset(apply_offset(target, sign * amount1, unit1), sign * amount2, unit2)
+    # compound: "X units[, | and ]Y units... before/after/from <date>"
+    _offset_part = rf"{_AMOUNT_PAT} {_UNIT_PAT}"
+    _offset_list = rf"(?:{_offset_part})(?:(?:,\s*|\s+and\s+)(?:{_offset_part}))*"
+    for prep in ("before", "after", "from"):
+        pattern = rf"({_offset_list})\s+{prep}\s+(?P<date_str>.+)"
+        m = re.fullmatch(pattern, s)
+        if m:
+            offsets_str = m.group(1)
+            date_str = m.group("date_str")
+            sign = -1 if prep == "before" else 1
+            target = parse(date_str, today)
+            for part in re.split(r",\s*|\s+and\s+", offsets_str):
+                m2 = re.fullmatch(rf"{_AMOUNT_PAT} {_UNIT_PAT}", part.strip())
+                if m2:
+                    target = apply_offset(
+                        target, sign * parse_amount(m2.group(1)), m2.group(2)
+                    )
+            return target
 
     # "next <weekday>" or "next week/month/year"
     match = re.fullmatch(r"next (\w+)", s)
