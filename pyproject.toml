@@ -21,4 +21,11 @@ pythonpath = ["src"]
 
 [tool.mypy]
 ignore_missing_imports = true
-python_version = "3.12"
+python_version = "3.8"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

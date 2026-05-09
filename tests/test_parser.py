@@ -38,15 +38,11 @@ def test_absolute_date():
 
 
 def test_before():
-    assert parse(
-        "5 days before December 1st, 2025"
-    ) == date(2025, 11, 26)
+    assert parse("5 days before December 1st, 2025") == date(2025, 11, 26)
 
 
 def test_after():
-    assert parse(
-        "2 weeks after January 1st, 2025"
-    ) == date(2025, 1, 15)
+    assert parse("2 weeks after January 1st, 2025") == date(2025, 1, 15)
 
 
 def test_next_tuesday():

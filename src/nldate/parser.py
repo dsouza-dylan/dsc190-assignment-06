@@ -1,6 +1,6 @@
 import re
 from datetime import date, timedelta
-
+from typing import Optional
 from dateutil.parser import parse as dtparse
 from dateutil.relativedelta import relativedelta
 
@@ -49,7 +49,7 @@ def last_weekday(base: date, target: int) -> date:
     return base - timedelta(days=days_behind)
 
 
-def parse(s: str, today: date | None = None) -> date:
+def parse(s: str, today: Optional[date] = None) -> date:
     if today is None:
         today = date.today()
 
